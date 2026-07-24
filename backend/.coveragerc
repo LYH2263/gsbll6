@@ -1,0 +1,16 @@
+[run]
+source = flights
+omit =
+    */migrations/*
+    flights/tests/*
+    flights/apps.py
+    flights/admin.py
+
+[report]
+show_missing = true
+skip_covered = false
+fail_under = 80
+precision = 1
+
+[html]
+directory = htmlcov
