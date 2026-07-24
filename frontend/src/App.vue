@@ -365,7 +365,8 @@
 </template>
 
 <script>
-import axios from 'axios';
+import { fetchFlights } from './api/flights.js';
+import { buildBaseParams, buildFilterParams, buildSortParams, filterCitySuggestions } from './utils/searchParams.js';
 
 export default {
   name: 'App',
@@ -425,51 +426,12 @@ export default {
     async searchFlights() {
       this.isLoading = true;
       try {
-        // 构建API请求参数
-        const params = {
-          departure_city: this.searchParams.departureCity,
-          arrival_city: this.searchParams.arrivalCity,
-          departure_date: this.searchParams.departureDate
-        };
-        
-        // 调用后端API
-        const response = await axios.get(`${this.apiBaseUrl}/flights/`, {
-          params: params
-        });
-        
-        // 处理后端返回的数据
-        if (response.data.status === 'success') {
-          // 转换后端数据格式为前端需要的格式
-          this.flights = response.data.data.map(flight => {
-            // 解析时间格式
-            const departureDateTime = new Date(flight.departure_time);
-            const arrivalDateTime = new Date(flight.arrival_time);
-            
-            // 计算飞行时长
-            const durationMs = arrivalDateTime - departureDateTime;
-            const hours = Math.floor(durationMs / (1000 * 60 * 60));
-            const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-            const duration = `${hours}h ${minutes}m`;
-            
-            return {
-              id: flight.id,
-              airline: flight.airline,
-              flightNumber: flight.flight_number,
-              aircraft: flight.aircraft,
-              departureTime: departureDateTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-              departureAirport: `${flight.departure_airport.name} (${flight.departure_airport.code})`,
-              arrivalTime: arrivalDateTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-              arrivalAirport: `${flight.arrival_airport.name} (${flight.arrival_airport.code})`,
-              duration: duration,
-              route: flight.is_direct ? '直飞' : '中转',
-              price: flight.price,
-              remainingSeats: flight.remaining_seats,
-              isDirect: flight.is_direct,
-              isShared: flight.is_shared
-            };
-          });
+        const params = buildBaseParams(this.searchParams);
+        const result = await fetchFlights(params);
+        if (result.success) {
+          this.flights = result.data;
         } else {
-          console.error('API返回错误:', response.data.message);
+          console.error('API返回错误:', result.message);
           // 显示错误提示
           alert('搜索失败，请稍后重试');
         }
@@ -486,56 +448,10 @@ export default {
       this.filterParams.type = type;
       this.isLoading = true;
       try {
-        // 构建API请求参数
-        const params = {
-          departure_city: this.searchParams.departureCity,
-          arrival_city: this.searchParams.arrivalCity,
-          departure_date: this.searchParams.departureDate
-        };
-        
-        // 根据筛选类型添加额外参数
-        if (type === 'direct') {
-          // 这里需要后端支持is_direct参数
-          params.is_direct = true;
-        } else if (type === 'transfer') {
-          params.is_direct = false;
-        } else if (type === 'shared') {
-          params.is_shared = true;
-        }
-        
-        // 调用后端API
-        const response = await axios.get(`${this.apiBaseUrl}/flights/`, {
-          params: params
-        });
-        
-        // 处理后端返回的数据
-        if (response.data.status === 'success') {
-          // 转换后端数据格式
-          this.flights = response.data.data.map(flight => {
-            const departureDateTime = new Date(flight.departure_time);
-            const arrivalDateTime = new Date(flight.arrival_time);
-            const durationMs = arrivalDateTime - departureDateTime;
-            const hours = Math.floor(durationMs / (1000 * 60 * 60));
-            const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-            const duration = `${hours}h ${minutes}m`;
-            
-            return {
-              id: flight.id,
-              airline: flight.airline,
-              flightNumber: flight.flight_number,
-              aircraft: flight.aircraft,
-              departureTime: departureDateTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-              departureAirport: `${flight.departure_airport.name} (${flight.departure_airport.code})`,
-              arrivalTime: arrivalDateTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-              arrivalAirport: `${flight.arrival_airport.name} (${flight.arrival_airport.code})`,
-              duration: duration,
-              route: flight.is_direct ? '直飞' : '中转',
-              price: flight.price,
-              remainingSeats: flight.remaining_seats,
-              isDirect: flight.is_direct,
-              isShared: flight.is_shared
-            };
-          });
+        const params = buildFilterParams(this.searchParams, type);
+        const result = await fetchFlights(params);
+        if (result.success) {
+          this.flights = result.data;
         }
       } catch (error) {
         console.error('筛选请求错误:', error);
@@ -549,56 +465,10 @@ export default {
       this.sortParam = sortType;
       this.isLoading = true;
       try {
-        // 构建API请求参数
-        const params = {
-          departure_city: this.searchParams.departureCity,
-          arrival_city: this.searchParams.arrivalCity,
-          departure_date: this.searchParams.departureDate
-        };
-        
-        // 根据排序类型添加额外参数
-        // 这里需要后端支持排序参数
-        if (sortType === 'price_asc') {
-          params.ordering = 'price';
-        } else if (sortType === 'time') {
-          params.ordering = 'departure_time';
-        } else if (sortType === 'airline') {
-          params.ordering = 'airline';
-        }
-        
-        // 调用后端API
-        const response = await axios.get(`${this.apiBaseUrl}/flights/`, {
-          params: params
-        });
-        
-        // 处理后端返回的数据
-        if (response.data.status === 'success') {
-          // 转换后端数据格式
-          this.flights = response.data.data.map(flight => {
-            const departureDateTime = new Date(flight.departure_time);
-            const arrivalDateTime = new Date(flight.arrival_time);
-            const durationMs = arrivalDateTime - departureDateTime;
-            const hours = Math.floor(durationMs / (1000 * 60 * 60));
-            const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-            const duration = `${hours}h ${minutes}m`;
-            
-            return {
-              id: flight.id,
-              airline: flight.airline,
-              flightNumber: flight.flight_number,
-              aircraft: flight.aircraft,
-              departureTime: departureDateTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-              departureAirport: `${flight.departure_airport.name} (${flight.departure_airport.code})`,
-              arrivalTime: arrivalDateTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-              arrivalAirport: `${flight.arrival_airport.name} (${flight.arrival_airport.code})`,
-              duration: duration,
-              route: flight.is_direct ? '直飞' : '中转',
-              price: flight.price,
-              remainingSeats: flight.remaining_seats,
-              isDirect: flight.is_direct,
-              isShared: flight.is_shared
-            };
-          });
+        const params = buildSortParams(this.searchParams, sortType);
+        const result = await fetchFlights(params);
+        if (result.success) {
+          this.flights = result.data;
         }
       } catch (error) {
         console.error('排序请求错误:', error);
@@ -628,9 +498,7 @@ export default {
       if (type === 'departure') {
         this.searchParams.departureCity = value;
         if (value) {
-          this.autocomplete.departure.suggestions = this.cities.filter(city => 
-            city.includes(value)
-          );
+          this.autocomplete.departure.suggestions = filterCitySuggestions(this.cities, value);
           this.autocomplete.departure.show = true;
         } else {
           this.autocomplete.departure.show = false;
@@ -638,9 +506,7 @@ export default {
       } else if (type === 'arrival') {
         this.searchParams.arrivalCity = value;
         if (value) {
-          this.autocomplete.arrival.suggestions = this.cities.filter(city => 
-            city.includes(value)
-          );
+          this.autocomplete.arrival.suggestions = filterCitySuggestions(this.cities, value);
           this.autocomplete.arrival.show = true;
         } else {
           this.autocomplete.arrival.show = false;
