@@ -1,0 +1,14 @@
+[run]
+source = flights
+omit =
+    */migrations/*
+    */tests/*
+    flights/apps.py
+    flights/admin.py
+    manage.py
+
+[report]
+show_missing = True
+exclude_lines =
+    pragma: no cover
+    def __str__

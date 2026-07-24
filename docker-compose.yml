@@ -48,5 +48,24 @@ services:
       - ./frontend:/app
       - /app/node_modules
 
+  # 后端测试服务（SQLite 内存库，无需依赖 db 服务）
+  # 用法：docker compose run --rm backend-test
+  backend-test:
+    build: ./backend
+    command: sh -c "coverage run --rcfile=.coveragerc manage.py test flights --settings=flight_booking.test_settings && coverage report"
+    environment:
+      DJANGO_SETTINGS_MODULE: flight_booking.test_settings
+    volumes:
+      - ./backend:/app
+
+  # 前端测试服务
+  # 用法：docker compose run --rm frontend-test
+  frontend-test:
+    build: ./frontend
+    command: sh -c "npm run test"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
 volumes:
   postgres_data:

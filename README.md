@@ -77,17 +77,92 @@ docker compose up
 .
 ├── frontend/         # 前端项目
 │   ├── src/          # 前端源代码
-│   ├── public/       # 静态资源
+│   │   ├── api/      # API 适配层（可单测）
+│   │   ├── utils/    # 筛选/排序/映射纯逻辑（可单测）
+│   │   └── App.vue   # 页面组件
+│   ├── test/         # Vitest 测试
 │   ├── Dockerfile    # 前端Docker配置
 │   └── package.json  # 前端依赖
 ├── backend/          # 后端项目
 │   ├── flights/      # 航班应用
-│   ├── flight_booking/ # 项目配置
+│   │   └── tests/    # Django 测试包（models/views/serialization/integration/defects）
+│   ├── flight_booking/ # 项目配置（含 test_settings.py）
+│   ├── docs/DEFECTS.md # 缺陷报告
+│   ├── .coveragerc   # 覆盖率配置
 │   ├── Dockerfile    # 后端Docker配置
 │   └── requirements.txt # 后端依赖
-├── docker-compose.yml # Docker Compose配置
+├── docker-compose.yml # Docker Compose配置（含 backend-test / frontend-test）
+├── run-tests.ps1     # 一条命令跑全部测试（Windows）
+├── run-tests.sh      # 一条命令跑全部测试（Linux/macOS/CI）
 └── README.md         # 项目说明
 ```
+
+## 测试
+
+测试体系覆盖后端（Django 单测 + 集成测）与前端（Vitest 单测 + 组件测），
+并以 `@expectedFailure` 标注了故意暴露现有实现缺陷的用例（详见
+[backend/docs/DEFECTS.md](backend/docs/DEFECTS.md)）。
+
+### 一条命令跑前后端
+
+Windows（PowerShell）：
+
+```powershell
+./run-tests.ps1              # 前后端全部
+./run-tests.ps1 -Backend     # 仅后端
+./run-tests.ps1 -Frontend -Coverage
+```
+
+Linux / macOS / CI：
+
+```bash
+./run-tests.sh               # 前后端全部
+./run-tests.sh backend       # 仅后端
+COVERAGE=1 ./run-tests.sh frontend
+```
+
+### 后端测试（docker compose，无需本地 Python/Postgres）
+
+后端测试使用 SQLite 内存库（`flight_booking/test_settings.py`），不依赖 db 服务：
+
+```bash
+docker compose run --rm backend-test
+```
+
+或在已构建镜像中直接运行：
+
+```bash
+docker compose run --rm backend python manage.py test flights --settings=flight_booking.test_settings
+```
+
+预期结果：`Ran 54 tests ... OK (expected failures=15)`，核心视图/模型覆盖率 **100%**（目标 ≥80%）。
+
+### 前端测试（Vitest）
+
+```bash
+cd frontend
+npm install
+npm run test            # 运行全部用例
+npm run test:coverage   # 附带覆盖率
+```
+
+或通过 docker：
+
+```bash
+docker compose run --rm frontend-test
+```
+
+预期结果：`Test Files 4 passed, Tests 34 passed`，`src/utils`、`src/api` 覆盖率 100%。
+
+### 覆盖范围
+
+| 层次 | 内容 |
+|------|------|
+| 后端单测 | `Airline`/`Airport`/`Flight` 约束与关联、级联删除、`__str__`；`flight_list`/`flight_detail` 的城市模糊匹配、日期筛选、空结果、404、请求方法；序列化字段完整性（含税价依赖的原始字段、机场嵌套字段、时间格式） |
+| 后端集成测 | 多条件组合查询、与种子数据一致的端到端断言、排序语义现状 |
+| 后端缺陷用例 | 非法日期静默忽略、排序/筛选参数未实现、输入校验缺失等 15 项（`@expectedFailure`） |
+| 前端单测 | 筛选/排序参数构建、城市自动补全、航班数据映射纯逻辑；API 适配层（mock axios） |
+| 前端组件测 | 搜索/筛选/排序交互、自动补全、详情展开、含税价展示（mock axios） |
 
 ## 功能特点
 

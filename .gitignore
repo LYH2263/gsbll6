@@ -1,3 +1,31 @@
 # 题目与对话（不纳入版本库）
 题目.md
 对话/
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 测试覆盖率
+.coverage
+htmlcov/
+coverage/
+.nyc_output/
+
+# 环境与系统文件
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
