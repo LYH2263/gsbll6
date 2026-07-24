@@ -35,6 +35,36 @@ services:
     volumes:
       - ./backend:/app
 
+  # 后端测试服务
+  backend-test:
+    build: ./backend
+    command: sh -c "python manage.py test flights.tests --verbosity=2"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: flight_booking
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    volumes:
+      - ./backend:/app
+
+  # 后端测试服务（带覆盖率）
+  backend-test-cov:
+    build: ./backend
+    command: sh -c "coverage run --source='flights' manage.py test flights.tests --verbosity=2 && coverage report --show-missing"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: flight_booking
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    volumes:
+      - ./backend:/app
+
   # 前端服务
   frontend:
     build: ./frontend
@@ -44,6 +74,14 @@ services:
       - backend
     environment:
       VITE_API_URL: http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  # 前端测试服务
+  frontend-test:
+    build: ./frontend
+    command: npm test
     volumes:
       - ./frontend:/app
       - /app/node_modules
